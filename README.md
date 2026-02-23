@@ -1,71 +1,109 @@
-# Predicting Tank Failure Pressure (Model Audit + Improvements)
+# Tank Failure Pressure Prediction
 
-## What I evaluated
-I reviewed the notebook workflow and tested the dataset with a corrected validation setup.
+This project predicts **Target Pressure (bar)** (tank failure pressure) from engineering and process features using supervised machine learning.
 
-Repository audited: `Sycolee78/machine-learning-pro`
-
----
-
-## Key finding (important)
-The current notebook has a **data leakage issue** in `split_data()`:
-
-- `X_train` and `X_test` are both assigned from the same dataset
-- `y_train` and `y_test` are also the same
-
-That means the model is effectively being tested on training data, so reported metrics are over-optimistic and not trustworthy for real-world performance.
+It includes:
+- an end-to-end notebook workflow (data prep, training, evaluation, visualization)
+- a reproducible Python script for benchmark evaluation
 
 ---
 
-## Re-evaluation with proper split
-I added a standalone script (`model_evaluation.py`) that uses:
+## Project objective
+Given tank-related input features, train regression models that estimate the pressure at which the tank fails.
 
-- Proper 80/20 train-test split
-- Median/most-frequent imputation
-- One-hot encoding for categorical columns
-- Scaling for SVR
-- Holdout metrics + 5-fold cross-validation
-
-### Holdout results (80/20)
-- **LinearRegression**: R2=0.4217, MAE=0.2115, MAPE=1.1475
-- **SVR (RBF)**: R2=0.8070, MAE=0.0949, MAPE=0.4796
-- **RandomForest**: R2=0.8476, MAE=0.0709, MAPE=0.1936
-- **GradientBoosting**: R2=0.6726, MAE=0.1256, MAPE=0.4756
-
-### 5-fold CV (RandomForest)
-- **R2 mean = 0.8805** (std 0.0191)
-- **MAE = 0.0672**
-- **MAPE = 0.1963**
-
-### Conclusion
-The project can perform well, but **only after fixing the validation approach**. With corrected evaluation, RandomForest is currently the strongest model among tested baselines.
+The target variable is:
+- `Target Pressure (bar)`
 
 ---
 
-## Additions made
-- Added: `model_evaluation.py`
-  - Reproducible evaluation pipeline
-  - Correct split logic
-  - Cross-validation summary
+## Repository structure
+- `train.csv` — training dataset
+- `prediction.csv` — saved predictions (generated output)
+- `Buruvuru_Emmanuel_Machine_Learning_Assignment.ipynb` — main notebook
+- `Buruvuru_Emmanuel_Machine_Learning_Assignment1.ipynb` — alternate notebook version
+- `model_evaluation.py` — script-based model training and evaluation
 
 ---
 
-## How to run
+## How the pipeline works
+
+### 1) Load data
+- Read `train.csv`
+- Remove non-informative ID column when present
+
+### 2) Preprocess
+- Handle missing values
+  - numeric: median imputation
+  - categorical: most-frequent imputation
+- Encode categorical variables (one-hot encoding)
+- Scale features for models that need it (e.g., SVR)
+
+### 3) Split data
+- Train/test split: 80/20 (`random_state=42`)
+
+### 4) Train models
+Current baseline models include:
+- Linear Regression
+- Support Vector Regression (RBF)
+- Random Forest Regressor
+- Gradient Boosting Regressor
+
+### 5) Evaluate
+Metrics used:
+- **R²** (goodness of fit)
+- **MAE** (mean absolute error)
+- **MAPE** (mean absolute percentage error)
+
+The script also runs **5-fold cross-validation** for Random Forest.
+
+---
+
+## Quick start
+
+### Requirements
+- Python 3.9+
+
+### Install dependencies
 ```bash
 python3 -m pip install pandas scikit-learn
+```
+
+### Run evaluation
+```bash
 python3 model_evaluation.py
 ```
 
----
-
-## Recommended next improvements
-1. Fix `split_data()` in notebook to use a real train-test split.
-2. Remove `SMOTE` for regression target (SMOTE is mainly classification-focused; current logic is not ideal for continuous targets).
-3. Add residual plots and error-by-feature diagnostics.
-4. Try XGBoost/LightGBM/CatBoost with proper CV and early stopping.
-5. Save best model + preprocessing pipeline (`joblib`) for deployment consistency.
+This prints model performance on:
+- holdout test set (80/20 split)
+- 5-fold CV summary for Random Forest
 
 ---
 
-## Notes
-This update is intentionally focused on evaluation validity and reliability of model quality claims.
+## Using the notebook
+Open either notebook and run cells top-to-bottom.
+
+```bash
+jupyter notebook
+```
+
+In the notebook, you can:
+- inspect preprocessing steps
+- train and compare models interactively
+- generate plots for feature relationships and model behavior
+
+---
+
+## Typical output
+Example metrics from the script:
+- LinearRegression: R²=0.4217, MAE=0.2115, MAPE=1.1475
+- SVR_rbf: R²=0.8070, MAE=0.0949, MAPE=0.4796
+- RandomForest: R²=0.8476, MAE=0.0709, MAPE=0.1936
+- GradientBoosting: R²=0.6726, MAE=0.1256, MAPE=0.4756
+- RandomForest 5-fold CV: R² mean=0.8805, MAE=0.0672, MAPE=0.1963
+
+---
+
+## Notes for users
+- This is a regression project (continuous target), not classification.
+- If you add new models, keep evaluation consistent (same split/CV and metrics).
+- For deployment, save preprocessing + model as one pipeline object.
