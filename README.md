@@ -1,45 +1,71 @@
-# 🧪 Predicting Tank Failure Pressure Using Machine Learning
+# Predicting Tank Failure Pressure (Model Audit + Improvements)
 
-## 📌 Problem Statement
+## What I evaluated
+I reviewed the notebook workflow and tested the dataset with a corrected validation setup.
 
-The goal of this project is to predict the **pressure at which a tank will fail** using supervised machine learning techniques. A dataset is provided containing multiple features relevant to tank conditions and structure. The objective is to train a model that accurately forecasts the failure pressure based on these features.
-
-The project workflow includes **data preprocessing**, **feature engineering**, **model development**, **hyperparameter tuning**, **evaluation**, and optionally **deployment**. Performance will be evaluated using metrics such as:
-
-* **MAPE (Mean Absolute Percentage Error)**
-* **R² Score**
-* **MAE (Mean Absolute Error)**
-* **RMSE (Root Mean Squared Error)**
-
-The final solution will include model ensembling using **Support Vector Regression (SVR)** and **Random Forest Regressor**, optimized via **GridSearchCV**, and deployed for use on unseen instances.
+Repository audited: `Sycolee78/machine-learning-pro`
 
 ---
 
-## 📚 Table of Contents
+## Key finding (important)
+The current notebook has a **data leakage issue** in `split_data()`:
 
-### 🔧 Task One: Data Preprocessing <a id="1"></a>
+- `X_train` and `X_test` are both assigned from the same dataset
+- `y_train` and `y_test` are also the same
 
-* ✅ [Load the dataset](#2)
-* ✅ [Handle missing values](#3)
-* ✅ [Detect and remove outliers](#4)
-* ✅ [Check for duplicate records](#5)
-* ✅ [Select relevant features using correlation analysis](#6)
-* ✅ [Perform feature engineering (e.g., interaction terms)](#7)
-* ✅ [Convert data types where needed](#8)
-* ✅ [Apply feature scaling (StandardScaler/MinMax)](#9)
-* ✅ [Data augmentation (if applicable)](#10)
-* ✅ [Encode categorical columns (One-Hot or Label Encoding)](#11)
-* ✅ [Perform final data preprocessing pipeline](#12)
-* ✅ [Split the dataset into training and testing sets](#13)
+That means the model is effectively being tested on training data, so reported metrics are over-optimistic and not trustworthy for real-world performance.
 
 ---
 
-### 🤖 Task Two: Model Development <a id="14"></a>
+## Re-evaluation with proper split
+I added a standalone script (`model_evaluation.py`) that uses:
 
-* 📊 [Visualize data distributions and relationships](#15)
-* ⚙️ [Train baseline models and evaluate](#16)
-* 🛠️ [Perform hyperparameter tuning using GridSearchCV](#18)
-* 🔮 [Make predictions on test data](#17)
-* 📈 [Visualize model performance using graphs](#19)
-* 🧩 [Model ensembling using SVR and Random Forest](#20)
+- Proper 80/20 train-test split
+- Median/most-frequent imputation
+- One-hot encoding for categorical columns
+- Scaling for SVR
+- Holdout metrics + 5-fold cross-validation
 
+### Holdout results (80/20)
+- **LinearRegression**: R2=0.4217, MAE=0.2115, MAPE=1.1475
+- **SVR (RBF)**: R2=0.8070, MAE=0.0949, MAPE=0.4796
+- **RandomForest**: R2=0.8476, MAE=0.0709, MAPE=0.1936
+- **GradientBoosting**: R2=0.6726, MAE=0.1256, MAPE=0.4756
+
+### 5-fold CV (RandomForest)
+- **R2 mean = 0.8805** (std 0.0191)
+- **MAE = 0.0672**
+- **MAPE = 0.1963**
+
+### Conclusion
+The project can perform well, but **only after fixing the validation approach**. With corrected evaluation, RandomForest is currently the strongest model among tested baselines.
+
+---
+
+## Additions made
+- Added: `model_evaluation.py`
+  - Reproducible evaluation pipeline
+  - Correct split logic
+  - Cross-validation summary
+
+---
+
+## How to run
+```bash
+python3 -m pip install pandas scikit-learn
+python3 model_evaluation.py
+```
+
+---
+
+## Recommended next improvements
+1. Fix `split_data()` in notebook to use a real train-test split.
+2. Remove `SMOTE` for regression target (SMOTE is mainly classification-focused; current logic is not ideal for continuous targets).
+3. Add residual plots and error-by-feature diagnostics.
+4. Try XGBoost/LightGBM/CatBoost with proper CV and early stopping.
+5. Save best model + preprocessing pipeline (`joblib`) for deployment consistency.
+
+---
+
+## Notes
+This update is intentionally focused on evaluation validity and reliability of model quality claims.
